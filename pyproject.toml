@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "telegram-manager"
+version = "0.0.1"
+description = "Локальная панель для управления сбором участников Telegram-групп"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+]
+
+[project.optional-dependencies]
+dev = [
+    "httpx>=0.27",
+    "pytest>=8",
+]
+
+[tool.setuptools.packages.find]
+include = ["backend*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
