@@ -135,6 +135,7 @@ UI-состояния, которые необходимо нарисовать 
 
 ### `groups`
 - `id` — PK (внутренний)
+- `account_id` — FK → `accounts.id`
 - `telegram_group_id` — unique для одного аккаунта
 - `title`, `username`, `group_type`, `access_state`
 - `last_checked_at`
@@ -263,7 +264,7 @@ telegram-manager/
 **Приёмка:** `python launcher.py` открывает рабочую панель; `/api/health` отвечает; перезапуск не ломает приложение.
 
 ### M1. База и миграции
-- [ ] SQLAlchemy модели и перечисления статусов.
+- [x] SQLAlchemy модели и перечисления статусов.
 - [ ] Alembic initial migration, таблицы/индексы/ограничения.
 - [ ] Репозитории для групп, пользователей, задач, связей.
 - [ ] Тесты на upsert, дедупликацию и каскады/foreign keys.
