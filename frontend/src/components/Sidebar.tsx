@@ -3,7 +3,7 @@ import { useHealth } from "../hooks/useHealth";
 
 const MENU = [
   { to: "/", label: "Главная", icon: "🏠" },
-  { to: "/accounts", label: "Аккаунты", icon: "👤" },
+  { to: "/auth", label: "Аккаунт", icon: "👤" },
   { to: "/groups", label: "Группы", icon: "👥" },
   { to: "/members", label: "Участники", icon: "🗂️" },
   { to: "/tasks", label: "Задачи", icon: "⚙️" },

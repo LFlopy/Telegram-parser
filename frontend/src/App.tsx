@@ -14,6 +14,7 @@ export default function App() {
       <main className="content">
         <Routes>
           <Route path="/" element={<Home />} />
+          <Route path="/auth" element={<Accounts />} />
           <Route path="/accounts" element={<Accounts />} />
           <Route path="/groups" element={<Groups />} />
           <Route path="/members" element={<Members />} />

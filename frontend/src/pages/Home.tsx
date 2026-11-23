@@ -1,14 +1,25 @@
 import { PageHeader } from "../components/PageHeader";
+import { useAuthStatus } from "../hooks/useAuthStatus";
 import { useHealth } from "../hooks/useHealth";
 
 export default function Home() {
   const health = useHealth();
+  const { status: authStatus } = useAuthStatus();
   const healthText =
     health.state === "online"
       ? `Работает (версия ${health.body?.version ?? "?"})`
       : health.state === "offline"
         ? "Недоступен — проверьте, запущен ли backend"
         : "Проверяю...";
+  const account = authStatus.state === "ready" ? authStatus.data.account : null;
+  const accountText =
+    authStatus.state === "loading"
+      ? "Проверяю..."
+      : account
+        ? account.username
+          ? `${account.display_name} (@${account.username})`
+          : account.display_name
+        : "Не подключён";
 
   return (
     <>
@@ -35,9 +46,11 @@ export default function Home() {
         <div>
           <h3>Telegram-аккаунт</h3>
           <p>
-            <span className="pill">Не авторизован</span>
+            <span className={account ? "pill ok" : "pill"}>{accountText}</span>
           </p>
-          <p className="muted small">Подключение аккаунта пока недоступно.</p>
+          <p className="muted small">
+            {account ? "Локальная сессия активна." : "Подключите аккаунт в разделе «Аккаунт»."}
+          </p>
         </div>
       </div>
 
