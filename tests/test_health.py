@@ -23,6 +23,7 @@ def test_health_ok(client: TestClient) -> None:
     body = resp.json()
     assert body["status"] == "ok"
     assert body["name"] == "Telegram Manager"
+    assert body["version"] == "0.1.0"
 
 
 def test_unknown_api_returns_404(client: TestClient) -> None:

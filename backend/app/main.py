@@ -128,8 +128,10 @@ def create_app(
         allow_headers=["*"],
     )
 
+    origin_host = f"[{settings.host}]" if ":" in settings.host else settings.host
     local_origins = {
         *settings.cors_origins,
+        f"http://{origin_host}:{settings.port}",
         f"http://127.0.0.1:{settings.port}",
         f"http://localhost:{settings.port}",
     }

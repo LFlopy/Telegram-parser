@@ -15,6 +15,7 @@ import threading
 import time
 import urllib.request
 import webbrowser
+from ipaddress import ip_address
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent
@@ -35,12 +36,25 @@ def _load_dotenv() -> None:
 
 
 def _settings_from_env() -> tuple[str, int]:
-    host = os.environ.get("TELEGRAM_MANAGER_HOST", "127.0.0.1")
+    host = os.environ.get("TELEGRAM_MANAGER_HOST", "127.0.0.1").strip()
+    try:
+        is_local = host.casefold() == "localhost" or ip_address(host).is_loopback
+    except ValueError:
+        is_local = host.casefold() == "localhost"
+    if not is_local:
+        raise ValueError("TELEGRAM_MANAGER_HOST должен быть локальным адресом.")
     try:
         port = int(os.environ.get("TELEGRAM_MANAGER_PORT", "8000"))
-    except ValueError:
-        port = 8000
+    except ValueError as exc:
+        raise ValueError("TELEGRAM_MANAGER_PORT должен быть целым числом.") from exc
+    if not 1 <= port <= 65535:
+        raise ValueError("TELEGRAM_MANAGER_PORT должен быть от 1 до 65535.")
     return host, port
+
+
+def _base_url(host: str, port: int) -> str:
+    url_host = f"[{host}]" if ":" in host else host
+    return f"http://{url_host}:{port}"
 
 
 def _terminate(proc: subprocess.Popen) -> None:
@@ -68,8 +82,12 @@ def _terminate(proc: subprocess.Popen) -> None:
 
 def main() -> int:
     _load_dotenv()
-    host, port = _settings_from_env()
-    base_url = f"http://{host}:{port}"
+    try:
+        host, port = _settings_from_env()
+    except ValueError as exc:
+        print(f"Ошибка настроек: {exc}")
+        return 1
+    base_url = _base_url(host, port)
     open_browser = "--no-browser" not in sys.argv
 
     index_file = PROJECT_ROOT / "frontend" / "dist" / "index.html"

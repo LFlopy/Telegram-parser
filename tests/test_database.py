@@ -11,6 +11,7 @@ from backend.app.db.models import (
     GroupAccessState,
     GroupMember,
     GroupType,
+    TaskStatus,
     TaskMember,
     TelegramGroup,
     TelegramUser,
@@ -163,5 +164,44 @@ async def test_sqlite_foreign_keys_and_cascade_are_enabled(tmp_path: Path) -> No
 
     async with database.session() as session:
         assert await session.scalar(select(func.count()).select_from(GroupMember)) == 0
+
+    await database.close()
+
+
+@pytest.mark.asyncio
+async def test_active_tasks_are_marked_interrupted_after_restart(tmp_path: Path) -> None:
+    url = database_url(tmp_path / "interrupted.db")
+    upgrade_database(url)
+    database = Database(url)
+
+    async with database.session() as session:
+        account = await AccountRepository(session).upsert(
+            telegram_user_id=1,
+            display_name="Owner",
+            username=None,
+            session_path="data/sessions/account.session",
+        )
+        group = await GroupRepository(session).upsert(
+            account_id=account.id,
+            telegram_group_id=-1001,
+            title="Group",
+            username=None,
+            group_type=GroupType.GROUP,
+            access_state=GroupAccessState.AVAILABLE,
+        )
+        repository = TaskRepository(session)
+        task = await repository.create(group.id)
+        task_id = task.id
+        await repository.update_status(task_id, TaskStatus.RUNNING)
+
+    async with database.session() as session:
+        assert await TaskRepository(session).mark_interrupted() == 1
+
+    async with database.session() as session:
+        interrupted = await TaskRepository(session).get(task_id)
+        assert interrupted is not None
+        assert interrupted.status is TaskStatus.FAILED
+        assert interrupted.error_code == "interrupted"
+        assert interrupted.finished_at is not None
 
     await database.close()
