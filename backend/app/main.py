@@ -15,8 +15,9 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import RequestResponseEndpoint
 from starlette.responses import Response
 
-from backend.app.api import auth, system
+from backend.app.api import auth, groups, system
 from backend.app.core.config import settings
+from backend.app.telegram.group_service import GroupServiceError, TelegramGroupService
 from backend.app.telegram.session_manager import AuthFlowError, TelegramSessionManager
 
 logger = logging.getLogger("telegram_manager")
@@ -25,16 +26,19 @@ logger = logging.getLogger("telegram_manager")
 def create_app(
     frontend_dist: Path | None = None,
     session_manager: TelegramSessionManager | None = None,
+    group_service: TelegramGroupService | None = None,
 ) -> FastAPI:
     logging.basicConfig(
         level=settings.log_level,
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
     telegram_manager = session_manager or TelegramSessionManager(settings.data_dir)
+    telegram_groups = group_service or TelegramGroupService(telegram_manager)
 
     @asynccontextmanager
     async def lifespan(application: FastAPI) -> AsyncIterator[None]:
         application.state.telegram_session_manager = telegram_manager
+        application.state.telegram_group_service = telegram_groups
         await telegram_manager.restore()
         try:
             yield
@@ -74,6 +78,19 @@ def create_app(
             },
         )
 
+    @app.exception_handler(GroupServiceError)
+    async def group_error_handler(
+        request: Request, exc: GroupServiceError
+    ) -> JSONResponse:
+        headers = (
+            {"Retry-After": str(exc.retry_after)} if exc.retry_after is not None else None
+        )
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={"code": exc.code, "message": exc.message},
+            headers=headers,
+        )
+
     app.add_middleware(
         CORSMiddleware,
         allow_origins=list(settings.cors_origins),
@@ -109,6 +126,7 @@ def create_app(
 
     app.include_router(system.router)
     app.include_router(auth.router)
+    app.include_router(groups.router)
 
     configured_dist = frontend_dist or settings.frontend_dist
     dist: Path | None = configured_dist.resolve() if configured_dist.is_dir() else None

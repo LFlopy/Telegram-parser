@@ -6,6 +6,11 @@ from backend.app.schemas.auth import (
     AuthStatusResponse,
     AuthStepResponse,
 )
+from backend.app.schemas.groups import (
+    GroupListResponse,
+    GroupResolveRequest,
+    GroupResponse,
+)
 
 __all__ = [
     "AccountResponse",
@@ -14,4 +19,7 @@ __all__ = [
     "AuthStartRequest",
     "AuthStatusResponse",
     "AuthStepResponse",
+    "GroupListResponse",
+    "GroupResolveRequest",
+    "GroupResponse",
 ]
