@@ -1,4 +1,5 @@
 from backend.app.telegram.group_service import (
+    GroupAccess,
     GroupInfo,
     GroupPage,
     GroupServiceError,
@@ -16,6 +17,7 @@ __all__ = [
     "AuthFlowError",
     "AuthStep",
     "GroupInfo",
+    "GroupAccess",
     "GroupPage",
     "GroupServiceError",
     "TelegramGroupService",

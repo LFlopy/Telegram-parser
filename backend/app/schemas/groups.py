@@ -23,3 +23,8 @@ class GroupListResponse(BaseModel):
 
 class GroupResolveRequest(BaseModel):
     link_or_username: str = Field(min_length=1, max_length=128)
+
+
+class GroupAccessResponse(BaseModel):
+    can_read_members: bool | None
+    reason: str | None

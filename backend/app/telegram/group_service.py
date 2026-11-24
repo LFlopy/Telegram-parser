@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import AsyncIterator
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any, Literal, NoReturn, Protocol, cast
 
 from telethon import errors, utils
@@ -17,7 +17,9 @@ PUBLIC_GROUP_PATTERN = re.compile(
 class GroupClientProtocol(Protocol):
     def iter_dialogs(self, limit: float | None = None) -> AsyncIterator[Any]: ...
 
-    async def get_entity(self, entity: str) -> Any: ...
+    async def get_entity(self, entity: Any) -> Any: ...
+
+    async def get_participants(self, entity: Any, limit: float | None = None) -> Any: ...
 
 
 class SessionManagerProtocol(Protocol):
@@ -40,6 +42,12 @@ class GroupPage:
     total: int
     page: int
     page_size: int
+
+
+@dataclass(frozen=True)
+class GroupAccess:
+    can_read_members: bool | None
+    reason: str | None
 
 
 class GroupServiceError(Exception):
@@ -177,6 +185,54 @@ class TelegramGroupService:
         self._entities[group_id] = entity
         self._groups[group_id] = group
         return group
+
+    async def check_access(self, group_id: int) -> GroupAccess:
+        client = cast(
+            GroupClientProtocol,
+            await self._session_manager.require_client(),
+        )
+        entity = self._entities.get(group_id)
+        if entity is None:
+            try:
+                entity = await client.get_entity(group_id)
+            except (ValueError, errors.ChannelInvalidError) as exc:
+                raise GroupServiceError(
+                    "group_not_found",
+                    "Группа не найдена в доступных диалогах.",
+                    404,
+                ) from exc
+            except (errors.RPCError, OSError, TimeoutError, ConnectionError) as exc:
+                self._raise_telegram_error(exc)
+            if not self._is_group_entity(entity):
+                raise GroupServiceError(
+                    "group_not_found",
+                    "Группа не найдена в доступных диалогах.",
+                    404,
+                )
+            self._entities[group_id] = entity
+
+        try:
+            await client.get_participants(entity, limit=1)
+        except (errors.ChatAdminRequiredError, errors.ChannelPrivateError):
+            self._set_access_state(group_id, "no_access")
+            return GroupAccess(
+                can_read_members=False,
+                reason="Telegram не разрешает чтение списка участников.",
+            )
+        except (errors.RPCError, OSError, TimeoutError, ConnectionError) as exc:
+            self._raise_telegram_error(exc)
+
+        self._set_access_state(group_id, "available")
+        return GroupAccess(can_read_members=True, reason=None)
+
+    def _set_access_state(
+        self,
+        group_id: int,
+        access_state: Literal["available", "no_access"],
+    ) -> None:
+        group = self._groups.get(group_id)
+        if group is not None:
+            self._groups[group_id] = replace(group, access_state=access_state)
 
     @staticmethod
     def _public_username(value: str) -> str:

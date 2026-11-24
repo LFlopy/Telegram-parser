@@ -5,6 +5,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query, Request
 
 from backend.app.schemas.groups import (
+    GroupAccessResponse,
     GroupListResponse,
     GroupResolveRequest,
     GroupResponse,
@@ -64,3 +65,15 @@ async def resolve_group(
 ) -> GroupResponse:
     group = await service.resolve_public(payload.link_or_username)
     return _group_response(group)
+
+
+@router.get("/{group_id}/access", response_model=GroupAccessResponse)
+async def check_group_access(
+    group_id: int,
+    service: GroupServiceDependency,
+) -> GroupAccessResponse:
+    access = await service.check_access(group_id)
+    return GroupAccessResponse(
+        can_read_members=access.can_read_members,
+        reason=access.reason,
+    )
