@@ -1,12 +1,12 @@
 import { useState, type FormEvent } from "react";
 import {
-  ApiError,
   logout,
   startAuth,
   verifyCode,
   verifyPassword,
   type AuthStep,
 } from "../api/auth";
+import { ApiError } from "../api/client";
 import { PageHeader } from "../components/PageHeader";
 import { useAuthStatus } from "../hooks/useAuthStatus";
 

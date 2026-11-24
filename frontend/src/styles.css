@@ -321,6 +321,94 @@ table.kv td:last-child {
   border: 1px solid rgba(229, 83, 75, 0.35);
 }
 
+.alert.notice {
+  color: #b9e8ce;
+  background: rgba(53, 192, 122, 0.12);
+  border: 1px solid rgba(53, 192, 122, 0.3);
+}
+
+.selected-group {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.selected-group h3 {
+  margin-top: 14px;
+}
+
+.selected-group p {
+  margin-bottom: 0;
+}
+
+.group-controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.inline-form {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.inline-form .field {
+  margin: 0;
+}
+
+.grow {
+  flex: 1;
+}
+
+.table-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.table-card > .muted {
+  padding: 18px 20px;
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.data-table th,
+.data-table td {
+  padding: 13px 16px;
+  border-bottom: 1px solid #2a3550;
+  text-align: left;
+  font-size: 13px;
+  vertical-align: middle;
+}
+
+.data-table th {
+  color: var(--muted);
+  font-weight: 500;
+  background: rgba(15, 20, 32, 0.35);
+}
+
+.data-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.table-action {
+  text-align: right !important;
+}
+
+.pagination {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 14px;
+}
+
 @media (max-width: 640px) {
   .form-grid {
     grid-template-columns: 1fr;
@@ -332,6 +420,15 @@ table.kv td:last-child {
 
   .auth-card {
     align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .group-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .inline-form {
+    align-items: stretch;
     flex-direction: column;
   }
 }
