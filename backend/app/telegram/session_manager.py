@@ -155,6 +155,16 @@ class TelegramSessionManager:
         async with self._lock:
             return self._account
 
+    async def require_client(self) -> TelegramClientProtocol:
+        async with self._lock:
+            if self._client is None or self._account is None:
+                raise AuthFlowError(
+                    "not_authenticated",
+                    "Сначала подключите Telegram-аккаунт.",
+                    401,
+                )
+            return self._client
+
     async def start(
         self, api_id: int, api_hash: str, phone: str
     ) -> AuthStep:
