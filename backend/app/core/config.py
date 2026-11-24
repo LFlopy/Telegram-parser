@@ -12,6 +12,10 @@ DATA_DIR = PROJECT_ROOT / "data"
 FRONTEND_DIST = PROJECT_ROOT / "frontend" / "dist"
 
 
+def _sqlite_url(path: Path) -> str:
+    return f"sqlite+aiosqlite:///{path.resolve().as_posix()}"
+
+
 def _env(name: str, default: str) -> str:
     value = os.environ.get(name)
     return value if value not in (None, "") else default
@@ -33,6 +37,7 @@ class Settings:
     cors_origins: tuple[str, ...]
     data_dir: Path
     frontend_dist: Path
+    database_url: str
     debug: bool
     app_name: str = "Telegram Manager"
     version: str = "0.0.1"
@@ -51,6 +56,10 @@ def load_settings() -> Settings:
         cors_origins=origins,
         data_dir=Path(_env("TELEGRAM_MANAGER_DATA_DIR", str(DATA_DIR))),
         frontend_dist=Path(_env("TELEGRAM_MANAGER_FRONTEND_DIST", str(FRONTEND_DIST))),
+        database_url=_env(
+            "TELEGRAM_MANAGER_DATABASE_URL",
+            _sqlite_url(Path(_env("TELEGRAM_MANAGER_DATA_DIR", str(DATA_DIR))) / "app.db"),
+        ),
         debug=_env_bool("TELEGRAM_MANAGER_DEBUG", False),
         log_level=_env("TELEGRAM_MANAGER_LOG_LEVEL", "INFO").upper(),
     )

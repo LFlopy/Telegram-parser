@@ -10,16 +10,30 @@ from backend.app.db.models import (
     TelegramGroup,
     TelegramUser,
 )
+from backend.app.db.repositories import (
+    AccountRepository,
+    GroupRepository,
+    TaskRepository,
+    UserRecord,
+    UserRepository,
+)
+from backend.app.db.session import Database
 
 __all__ = [
     "Account",
+    "AccountRepository",
     "Base",
     "GroupAccessState",
     "GroupMember",
+    "GroupRepository",
     "GroupType",
     "ParseTask",
     "TaskMember",
+    "TaskRepository",
     "TaskStatus",
     "TelegramGroup",
     "TelegramUser",
+    "UserRecord",
+    "UserRepository",
+    "Database",
 ]
