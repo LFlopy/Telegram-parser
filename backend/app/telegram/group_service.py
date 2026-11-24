@@ -195,6 +195,12 @@ class TelegramGroupService:
         if entity is None:
             try:
                 entity = await client.get_entity(group_id)
+            except errors.ChannelPrivateError:
+                self._set_access_state(group_id, "no_access")
+                return GroupAccess(
+                    can_read_members=False,
+                    reason="Группа недоступна для текущего аккаунта.",
+                )
             except (ValueError, errors.ChannelInvalidError) as exc:
                 raise GroupServiceError(
                     "group_not_found",
@@ -213,7 +219,11 @@ class TelegramGroupService:
 
         try:
             await client.get_participants(entity, limit=1)
-        except (errors.ChatAdminRequiredError, errors.ChannelPrivateError):
+        except (
+            errors.ChatAdminRequiredError,
+            errors.ChannelPrivateError,
+            errors.UserNotParticipantError,
+        ):
             self._set_access_state(group_id, "no_access")
             return GroupAccess(
                 can_read_members=False,

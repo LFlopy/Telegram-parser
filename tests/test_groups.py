@@ -163,6 +163,10 @@ async def test_search_pagination_and_public_resolution() -> None:
         await service.resolve_public("https://t.me/+private-invite")
     assert invite_error.value.code == "public_address_invalid"
 
+    with pytest.raises(GroupServiceError) as missing_error:
+        await service.resolve_public("@missing_group")
+    assert missing_error.value.code == "group_not_found"
+
 
 def test_groups_api_lists_and_resolves(tmp_path: Path) -> None:
     dialog = FakeDialog(
@@ -250,3 +254,49 @@ async def test_member_access_states() -> None:
     with pytest.raises(GroupServiceError) as missing_error:
         await service.check_access(-9999)
     assert missing_error.value.code == "group_not_found"
+
+
+def test_group_access_api_handles_restricted_and_missing(tmp_path: Path) -> None:
+    restricted_entity = SimpleNamespace(
+        marked_id=-1002,
+        title="Restricted",
+        username="restricted_group",
+        megagroup=True,
+        gigagroup=False,
+        broadcast=False,
+    )
+    service = TelegramGroupService(
+        FakeSessionManager(
+            FakeGroupClient(
+                [],
+                entities={-1002: restricted_entity},
+                access_errors={
+                    -1002: errors.ChatAdminRequiredError(request=None),
+                },
+            )
+        )
+    )
+    app = create_app(
+        session_manager=TelegramSessionManager(tmp_path),
+        group_service=service,
+    )
+
+    with TestClient(app) as api:
+        restricted = api.get("/api/groups/-1002/access")
+        missing = api.get("/api/groups/-9999/access")
+
+    assert restricted.status_code == 200
+    assert restricted.json()["can_read_members"] is False
+    assert restricted.json()["reason"]
+    assert missing.status_code == 404
+    assert missing.json()["code"] == "group_not_found"
+
+
+def test_groups_api_requires_authentication(tmp_path: Path) -> None:
+    app = create_app(session_manager=TelegramSessionManager(tmp_path))
+
+    with TestClient(app) as api:
+        response = api.get("/api/groups")
+
+    assert response.status_code == 401
+    assert response.json()["code"] == "not_authenticated"
