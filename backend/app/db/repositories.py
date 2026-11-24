@@ -8,6 +8,7 @@ from uuid import UUID
 from sqlalchemy import func, select, update
 from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from backend.app.db.models import (
     Account,
@@ -206,7 +207,11 @@ class TaskRepository:
         return task
 
     async def get(self, task_id: UUID) -> ParseTask | None:
-        return await self._session.get(ParseTask, task_id)
+        return await self._session.scalar(
+            select(ParseTask)
+            .options(selectinload(ParseTask.source_group))
+            .where(ParseTask.id == task_id)
+        )
 
     async def get_active(self) -> ParseTask | None:
         return await self._session.scalar(
@@ -217,7 +222,7 @@ class TaskRepository:
         )
 
     async def list(self, *, page: int, page_size: int) -> tuple[list[ParseTask], int]:
-        base = select(ParseTask)
+        base = select(ParseTask).options(selectinload(ParseTask.source_group))
         total = int(await self._session.scalar(select(func.count()).select_from(ParseTask)) or 0)
         tasks = list(
             (
@@ -244,7 +249,9 @@ class TaskRepository:
             "error_message": error_message,
         }
         if status is TaskStatus.RUNNING:
-            values["started_at"] = datetime.now(UTC)
+            values["started_at"] = func.coalesce(
+                ParseTask.started_at, datetime.now(UTC)
+            )
         if status in {TaskStatus.COMPLETED, TaskStatus.CANCELLED, TaskStatus.FAILED}:
             values["finished_at"] = datetime.now(UTC)
         await self._session.execute(
@@ -272,7 +279,7 @@ class TaskRepository:
         )
 
     async def mark_interrupted(self) -> int:
-        active_statuses = (TaskStatus.RUNNING, TaskStatus.WAITING)
+        active_statuses = self.ACTIVE_STATUSES
         interrupted_count = int(
             await self._session.scalar(
                 select(func.count())

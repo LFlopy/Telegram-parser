@@ -217,6 +217,20 @@ class TelegramGroupService:
         self._set_access_state(group_id, "available")
         return GroupAccess(can_read_members=True, reason=None)
 
+    async def get_group(self, group_id: int) -> GroupInfo:
+        group = self._groups.get(group_id)
+        if group is not None:
+            return group
+        await self.list_groups()
+        group = self._groups.get(group_id)
+        if group is None:
+            raise GroupServiceError(
+                "group_not_found",
+                "Группа не найдена в доступных диалогах.",
+                404,
+            )
+        return group
+
     async def get_entity(self, group_id: int) -> Any:
         entity = self._entities.get(group_id)
         if entity is not None:

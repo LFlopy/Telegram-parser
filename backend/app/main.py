@@ -15,10 +15,14 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import RequestResponseEndpoint
 from starlette.responses import Response
 
-from backend.app.api import auth, groups, system
+from backend.app.api import auth, groups, system, tasks
 from backend.app.core.config import settings
+from backend.app.db.migrations import upgrade_database
+from backend.app.db.session import Database
 from backend.app.telegram.group_service import GroupServiceError, TelegramGroupService
+from backend.app.telegram.participant_collector import ParticipantCollector
 from backend.app.telegram.session_manager import AuthFlowError, TelegramSessionManager
+from backend.app.tasks.manager import TaskManager, TaskManagerError
 
 logger = logging.getLogger("telegram_manager")
 
@@ -27,6 +31,8 @@ def create_app(
     frontend_dist: Path | None = None,
     session_manager: TelegramSessionManager | None = None,
     group_service: TelegramGroupService | None = None,
+    database: Database | None = None,
+    task_manager: TaskManager | None = None,
 ) -> FastAPI:
     logging.basicConfig(
         level=settings.log_level,
@@ -34,16 +40,30 @@ def create_app(
     )
     telegram_manager = session_manager or TelegramSessionManager(settings.data_dir)
     telegram_groups = group_service or TelegramGroupService(telegram_manager)
+    application_database = database or Database(settings.database_url)
+    application_tasks = task_manager or TaskManager(
+        application_database,
+        ParticipantCollector(telegram_manager, telegram_groups),
+        telegram_manager,
+        telegram_groups,
+    )
 
     @asynccontextmanager
     async def lifespan(application: FastAPI) -> AsyncIterator[None]:
+        upgrade_database(application_database.url)
+        application.state.database = application_database
+        application.state.task_manager = application_tasks
         application.state.telegram_session_manager = telegram_manager
         application.state.telegram_group_service = telegram_groups
+        application.state.local_origins = local_origins
+        await application_tasks.initialize()
         await telegram_manager.restore()
         try:
             yield
         finally:
+            await application_tasks.close()
             await telegram_manager.close()
+            await application_database.close()
 
     app = FastAPI(
         title=settings.app_name,
@@ -91,6 +111,15 @@ def create_app(
             headers=headers,
         )
 
+    @app.exception_handler(TaskManagerError)
+    async def task_error_handler(
+        request: Request, exc: TaskManagerError
+    ) -> JSONResponse:
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={"code": exc.code, "message": exc.message},
+        )
+
     app.add_middleware(
         CORSMiddleware,
         allow_origins=list(settings.cors_origins),
@@ -127,6 +156,8 @@ def create_app(
     app.include_router(system.router)
     app.include_router(auth.router)
     app.include_router(groups.router)
+    app.include_router(tasks.router)
+    app.include_router(tasks.ws_router)
 
     configured_dist = frontend_dist or settings.frontend_dist
     dist: Path | None = configured_dist.resolve() if configured_dist.is_dir() else None

@@ -181,6 +181,11 @@ body {
   color: var(--bad);
 }
 
+.pill.warn {
+  background: rgba(217, 165, 60, 0.15);
+  color: var(--warn);
+}
+
 .dot {
   width: 9px;
   height: 9px;
@@ -409,6 +414,54 @@ table.kv td:last-child {
   gap: 14px;
 }
 
+.task-launcher,
+.task-progress-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.task-launcher p,
+.task-progress p {
+  margin-bottom: 0;
+}
+
+.task-progress-title h3 {
+  margin-top: 12px;
+}
+
+.counter-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.counter-grid > div {
+  background: var(--panel-2);
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.counter-grid strong {
+  font-size: 22px;
+}
+
+.counter-grid span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.task-error {
+  color: #ffb4ae;
+  margin-top: 5px;
+  max-width: 420px;
+}
+
 @media (max-width: 640px) {
   .form-grid {
     grid-template-columns: 1fr;
@@ -430,5 +483,15 @@ table.kv td:last-child {
   .inline-form {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .task-launcher,
+  .task-progress-title {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .counter-grid {
+    grid-template-columns: 1fr 1fr;
   }
 }
