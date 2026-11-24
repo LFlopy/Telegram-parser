@@ -15,7 +15,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import RequestResponseEndpoint
 from starlette.responses import Response
 
-from backend.app.api import auth, groups, system, tasks
+from backend.app.api import auth, groups, members, system, tasks
 from backend.app.core.config import settings
 from backend.app.db.migrations import upgrade_database
 from backend.app.db.session import Database
@@ -157,6 +157,7 @@ def create_app(
     app.include_router(auth.router)
     app.include_router(groups.router)
     app.include_router(tasks.router)
+    app.include_router(members.router)
     app.include_router(tasks.ws_router)
 
     configured_dist = frontend_dist or settings.frontend_dist

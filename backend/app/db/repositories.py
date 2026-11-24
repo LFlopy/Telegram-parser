@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from uuid import UUID
 
-from sqlalchemy import func, select, update
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -192,6 +192,62 @@ class UserRepository:
             )
             await self._session.execute(statement)
         return len(new_ids)
+
+
+class TaskResultRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
+
+    async def list_members(
+        self,
+        task_id: UUID,
+        *,
+        search: str | None,
+        page: int,
+        page_size: int,
+    ) -> tuple[list[UserRecord], int]:
+        filters = [TaskMember.task_id == task_id]
+        query = (search or "").strip()
+        if query:
+            escaped = query.replace("%", r"\%").replace("_", r"\_")
+            pattern = "%" + escaped + "%"
+            filters.append(
+                or_(
+                    TelegramUser.username.ilike(pattern, escape="\\"),
+                    TelegramUser.first_name.ilike(pattern, escape="\\"),
+                    TelegramUser.last_name.ilike(pattern, escape="\\"),
+                )
+            )
+        joined = TaskMember.__table__.join(
+            TelegramUser,
+            TaskMember.telegram_user_id == TelegramUser.telegram_user_id,
+        )
+        total = int(
+            await self._session.scalar(
+                select(func.count()).select_from(joined).where(*filters)
+            )
+            or 0
+        )
+        users = (
+            await self._session.scalars(
+                select(TelegramUser)
+                .join(TaskMember)
+                .where(*filters)
+                .order_by(TelegramUser.telegram_user_id)
+                .offset((page - 1) * page_size)
+                .limit(page_size)
+            )
+        ).all()
+        return [
+            UserRecord(
+                user.telegram_user_id,
+                user.username,
+                user.first_name,
+                user.last_name,
+                user.is_bot,
+            )
+            for user in users
+        ], total
 
 
 class TaskRepository:

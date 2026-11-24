@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { ApiError } from "../api/client";
 import type { TelegramGroup } from "../api/groups";
 import {
@@ -209,7 +210,7 @@ export default function Tasks() {
                     <td>{task.saved_count} / {task.processed_count}</td>
                     <td>{formatDate(task.created_at)}</td>
                     <td className="table-action">
-                      {ACTIVE_STATUSES.includes(task.status) && (
+                      {ACTIVE_STATUSES.includes(task.status) ? (
                         <button
                           className="button secondary"
                           type="button"
@@ -218,6 +219,10 @@ export default function Tasks() {
                         >
                           Отменить
                         </button>
+                      ) : (
+                        <Link className="button secondary result-link" to={`/members?task=${task.id}`}>
+                          Результат
+                        </Link>
                       )}
                     </td>
                   </tr>

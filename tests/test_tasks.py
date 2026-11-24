@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import asyncio
+import csv
+import io
 import time
 from collections.abc import AsyncIterator
 from pathlib import Path
@@ -216,3 +218,78 @@ def test_tasks_api_and_websocket_publish_progress(tmp_path: Path) -> None:
     assert detail.json()["saved_count"] == 2
     assert history.status_code == 200
     assert history.json()["total"] == 1
+
+
+def test_member_table_search_pagination_and_safe_csv_export(tmp_path: Path) -> None:
+    url = database_url(tmp_path / "members.db")
+    upgrade_database(url)
+    database = Database(url)
+    exported_records = [
+        ParticipantRecord(201, "юзер", 'Анна, "Тест"', "Строка\nДва", False),
+        ParticipantRecord(202, "=2+2", "+SUM(A1:A2)", "Обычная", True),
+    ]
+    manager = TaskManager(
+        database,
+        SequenceCollector([exported_records, []]),
+        FakeSessionManager(),
+        FakeGroupService(),
+        batch_size=1,
+    )
+    app = create_app(
+        session_manager=TelegramSessionManager(tmp_path / "telegram-members"),
+        group_service=FakeGroupService(),  # type: ignore[arg-type]
+        database=database,
+        task_manager=manager,
+    )
+
+    with TestClient(app) as api:
+        first = api.post("/api/tasks/parse", json={"group_id": -1001}).json()
+        first_detail = api.get(f"/api/tasks/{first['id']}")
+        for _ in range(50):
+            if first_detail.json()["status"] == "completed":
+                break
+            time.sleep(0.01)
+            first_detail = api.get(f"/api/tasks/{first['id']}")
+
+        first_page = api.get(
+            f"/api/tasks/{first['id']}/members", params={"page_size": 1, "page": 1}
+        )
+        second_page = api.get(
+            f"/api/tasks/{first['id']}/members", params={"page_size": 1, "page": 2}
+        )
+        searched = api.get(
+            f"/api/tasks/{first['id']}/members", params={"search": "Анна"}
+        )
+        exported = api.get(f"/api/tasks/{first['id']}/export.csv")
+
+        second = api.post("/api/tasks/parse", json={"group_id": -1001}).json()
+        second_detail = api.get(f"/api/tasks/{second['id']}")
+        for _ in range(50):
+            if second_detail.json()["status"] == "completed":
+                break
+            time.sleep(0.01)
+            second_detail = api.get(f"/api/tasks/{second['id']}")
+        empty_members = api.get(f"/api/tasks/{second['id']}/members")
+        empty_export = api.get(f"/api/tasks/{second['id']}/export.csv")
+
+    assert first_page.status_code == 200
+    assert first_page.json()["total"] == 2
+    assert first_page.json()["items"][0]["telegram_user_id"] == 201
+    assert second_page.json()["items"][0]["telegram_user_id"] == 202
+    assert searched.json()["total"] == 1
+    assert searched.json()["items"][0]["username"] == "юзер"
+
+    assert exported.content.startswith(b"\xef\xbb\xbf")
+    rows = list(csv.DictReader(io.StringIO(exported.content.decode("utf-8-sig"))))
+    assert len(rows) == 2
+    assert rows[0]["first_name"] == 'Анна, "Тест"'
+    assert rows[0]["last_name"] == "Строка\nДва"
+    assert rows[1]["username"] == "'=2+2"
+    assert rows[1]["first_name"] == "'+SUM(A1:A2)"
+    assert "attachment" in exported.headers["content-disposition"]
+
+    assert empty_members.json()["total"] == 0
+    empty_rows = list(
+        csv.DictReader(io.StringIO(empty_export.content.decode("utf-8-sig")))
+    )
+    assert empty_rows == []

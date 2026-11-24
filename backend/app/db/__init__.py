@@ -14,6 +14,7 @@ from backend.app.db.repositories import (
     AccountRepository,
     GroupRepository,
     TaskRepository,
+    TaskResultRepository,
     UserRecord,
     UserRepository,
 )
@@ -30,6 +31,7 @@ __all__ = [
     "ParseTask",
     "TaskMember",
     "TaskRepository",
+    "TaskResultRepository",
     "TaskStatus",
     "TelegramGroup",
     "TelegramUser",
