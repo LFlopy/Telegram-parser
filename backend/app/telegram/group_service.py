@@ -191,31 +191,13 @@ class TelegramGroupService:
             GroupClientProtocol,
             await self._session_manager.require_client(),
         )
-        entity = self._entities.get(group_id)
-        if entity is None:
-            try:
-                entity = await client.get_entity(group_id)
-            except errors.ChannelPrivateError:
+        try:
+            entity = await self.get_entity(group_id)
+        except GroupServiceError as exc:
+            if exc.code == "group_no_access":
                 self._set_access_state(group_id, "no_access")
-                return GroupAccess(
-                    can_read_members=False,
-                    reason="Группа недоступна для текущего аккаунта.",
-                )
-            except (ValueError, errors.ChannelInvalidError) as exc:
-                raise GroupServiceError(
-                    "group_not_found",
-                    "Группа не найдена в доступных диалогах.",
-                    404,
-                ) from exc
-            except (errors.RPCError, OSError, TimeoutError, ConnectionError) as exc:
-                self._raise_telegram_error(exc)
-            if not self._is_group_entity(entity):
-                raise GroupServiceError(
-                    "group_not_found",
-                    "Группа не найдена в доступных диалогах.",
-                    404,
-                )
-            self._entities[group_id] = entity
+                return GroupAccess(can_read_members=False, reason=exc.message)
+            raise
 
         try:
             await client.get_participants(entity, limit=1)
@@ -234,6 +216,39 @@ class TelegramGroupService:
 
         self._set_access_state(group_id, "available")
         return GroupAccess(can_read_members=True, reason=None)
+
+    async def get_entity(self, group_id: int) -> Any:
+        entity = self._entities.get(group_id)
+        if entity is not None:
+            return entity
+        client = cast(
+            GroupClientProtocol,
+            await self._session_manager.require_client(),
+        )
+        try:
+            entity = await client.get_entity(group_id)
+        except errors.ChannelPrivateError as exc:
+            raise GroupServiceError(
+                "group_no_access",
+                "Группа недоступна для текущего аккаунта.",
+                403,
+            ) from exc
+        except (ValueError, errors.ChannelInvalidError) as exc:
+            raise GroupServiceError(
+                "group_not_found",
+                "Группа не найдена в доступных диалогах.",
+                404,
+            ) from exc
+        except (errors.RPCError, OSError, TimeoutError, ConnectionError) as exc:
+            self._raise_telegram_error(exc)
+        if not self._is_group_entity(entity):
+            raise GroupServiceError(
+                "group_not_found",
+                "Группа не найдена в доступных диалогах.",
+                404,
+            )
+        self._entities[group_id] = entity
+        return entity
 
     def _set_access_state(
         self,
