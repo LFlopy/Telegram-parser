@@ -35,6 +35,13 @@ export function verifyCode(challengeId: string, code: string): Promise<AuthStep>
   });
 }
 
+export function resendCode(challengeId: string): Promise<AuthStep> {
+  return apiRequest<AuthStep>("/api/auth/resend-code", {
+    method: "POST",
+    body: JSON.stringify({ challenge_id: challengeId }),
+  });
+}
+
 export function verifyPassword(challengeId: string, password: string): Promise<AuthStep> {
   return apiRequest<AuthStep>("/api/auth/verify-password", {
     method: "POST",

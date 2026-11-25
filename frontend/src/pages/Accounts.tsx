@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import {
   logout,
+  resendCode,
   startAuth,
   verifyCode,
   verifyPassword,
@@ -87,6 +88,19 @@ export default function Accounts() {
     setError(null);
     try {
       await applyResult(await verifyCode(challengeId, code));
+    } catch (caught) {
+      handleError(caught);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleResendCode = async () => {
+    setBusy(true);
+    setError(null);
+    setCode("");
+    try {
+      await applyResult(await resendCode(challengeId));
     } catch (caught) {
       handleError(caught);
     } finally {
@@ -220,6 +234,14 @@ export default function Accounts() {
             </label>
             <button className="button" type="submit" disabled={busy}>
               {busy ? "Проверяю..." : "Продолжить"}
+            </button>
+            <button
+              className="button secondary resend-code-button"
+              type="button"
+              disabled={busy}
+              onClick={() => void handleResendCode()}
+            >
+              Запросить новый код
             </button>
           </form>
         )}

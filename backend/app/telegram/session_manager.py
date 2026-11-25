@@ -232,6 +232,17 @@ class TelegramSessionManager:
             account = await self._complete_challenge(challenge, user)
             return AuthStep(challenge_id, "complete", account)
 
+    async def resend_code(self, challenge_id: str) -> AuthStep:
+        async with self._lock:
+            challenge = await self._get_challenge(challenge_id)
+            try:
+                sent_code = await challenge.client.send_code_request(challenge.phone)
+            except TELETHON_EXCEPTIONS as exc:
+                self._raise_telegram_error(exc)
+            challenge.phone_code_hash = str(sent_code.phone_code_hash)
+            challenge.expires_at = time.monotonic() + self._challenge_ttl
+            return AuthStep(challenge_id, "code")
+
     async def verify_password(self, challenge_id: str, password: str) -> AuthStep:
         async with self._lock:
             challenge = await self._get_challenge(challenge_id)

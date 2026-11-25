@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, Request, Response, status
 
 from backend.app.schemas.auth import (
     AccountResponse,
+    AuthChallengeRequest,
     AuthCodeRequest,
     AuthPasswordRequest,
     AuthStartRequest,
@@ -74,6 +75,15 @@ async def verify_code(
     manager: SessionManagerDependency,
 ) -> AuthStepResponse:
     step = await manager.verify_code(payload.challenge_id, payload.code)
+    return _step_response(step)
+
+
+@router.post("/resend-code", response_model=AuthStepResponse)
+async def resend_code(
+    payload: AuthChallengeRequest,
+    manager: SessionManagerDependency,
+) -> AuthStepResponse:
+    step = await manager.resend_code(payload.challenge_id)
     return _step_response(step)
 
 

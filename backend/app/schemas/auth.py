@@ -36,6 +36,10 @@ class AuthCodeRequest(BaseModel):
     code: str = Field(pattern=r"^\d{1,10}$")
 
 
+class AuthChallengeRequest(BaseModel):
+    challenge_id: str = Field(min_length=1, max_length=64)
+
+
 class AuthPasswordRequest(BaseModel):
     challenge_id: str = Field(min_length=1, max_length=64)
     password: str = Field(min_length=1, max_length=256)
